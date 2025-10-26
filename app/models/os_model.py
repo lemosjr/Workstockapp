@@ -153,3 +153,39 @@ def update_os(os_id, data):
             cursor.close()
         if conn:
             release_connection(conn)
+
+def delete_os(os_id):
+    """
+    Deleta uma Ordem de Serviço do banco de dados usando seu ID.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = "DELETE FROM ordens_servico WHERE id = %s;"
+        
+        cursor.execute(query, (os_id,))
+        conn.commit() # Confirma a transação
+        
+        # Verifica se alguma linha foi realmente deletada
+        if cursor.rowcount > 0:
+            print(f"Model (OS): OS ID {os_id} deletada com sucesso.")
+            return True
+        else:
+            print(f"Model (OS): NENHUMA OS encontrada com ID {os_id}.")
+            return False # Nenhuma linha foi afetada
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        # Futuramente, se a OS tiver materiais (FK), o erro será capturado aqui.
+        print(f"Model Error (OS): Erro ao deletar OS: {error}")
+        if conn:
+            conn.rollback() # Desfaz a transação
+        return False
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)

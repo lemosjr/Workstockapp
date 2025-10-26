@@ -86,22 +86,117 @@ def get_all_materials():
         if conn:
             release_connection(conn)
 
-# --- (Opcional) ---
-# Embora o foco seja "Cadastro", um Model completo teria também
-# as funções get_by_id, update e delete.
-# Deixarei o esboço para futura implementação:
+# --- FUNÇÕES ATUALIZADAS (CRUD COMPLETO) ---
 
 def get_material_by_id(material_id):
-    """ Busca um material pelo seu ID. """
-    # Lógica similar ao get_all_materials, mas com "WHERE id = %s"
-    pass
+    """ Busca um material pelo seu ID. Retorna um dict. """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=extras.DictCursor)
+        
+        query = "SELECT * FROM materiais WHERE id = %s;"
+        cursor.execute(query, (material_id,))
+        
+        material = cursor.fetchone()
+        return material
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Erro ao buscar material por ID ({material_id}): {error}")
+        return None
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
 
 def update_material(material_id, data):
-    """ Atualiza um material existente. """
-    # Lógica similar ao create_material, mas com "UPDATE materiais SET nome = %(nome)s, ... WHERE id = %(id)s"
-    pass
+    """ 
+    Atualiza um material existente. 
+    'data' deve conter as mesmas chaves de 'create_material'.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Adiciona o ID ao dicionário para a query
+        data['id'] = material_id
+        
+        query = """
+        UPDATE materiais SET
+            nome = %(nome)s,
+            sku = %(sku)s,
+            unidade_medida = %(unidade_medida)s,
+            preco_custo = %(preco_custo)s,
+            estoque_atual = %(estoque_atual)s,
+            estoque_minimo = %(estoque_minimo)s,
+            fornecedor_preferencial = %(fornecedor)s,
+            localizacao = %(localizacao)s,
+            data_atualizacao = CURRENT_TIMESTAMP
+        WHERE
+            id = %(id)s;
+        """
+        
+        cursor.execute(query, data)
+        conn.commit()
+        
+        # Verifica se alguma linha foi realmente atualizada
+        if cursor.rowcount > 0:
+            print(f"Model (Estoque): Material ID {material_id} atualizado com sucesso.")
+            return True
+        else:
+            print(f"Model (Estoque): NENHUM material encontrado com ID {material_id} para atualizar.")
+            return False # Nenhuma linha foi afetada
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Erro ao atualizar material: {error}")
+        if conn:
+            conn.rollback()
+        return False
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
 
 def delete_material(material_id):
-    """ Deleta um material pelo seu ID. """
-    # Lógica com "DELETE FROM materiais WHERE id = %s"
-    pass
+    """
+    Deleta um material do banco de dados usando seu ID.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = "DELETE FROM materiais WHERE id = %s;"
+        
+        cursor.execute(query, (material_id,))
+        conn.commit() # Confirma a transação
+        
+        # Verifica se alguma linha foi realmente deletada
+        if cursor.rowcount > 0:
+            print(f"Model (Estoque): Material ID {material_id} deletado com sucesso.")
+            return True
+        else:
+            print(f"Model (Estoque): NENHUM material encontrado com ID {material_id}.")
+            return False # Nenhuma linha foi afetada
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        # Se este material estiver sendo usado (ex: FK em outra tabela),
+        # o banco de dados dará um erro aqui, protegendo a integridade.
+        print(f"Model Error (Estoque): Erro ao deletar material: {error}")
+        if conn:
+            conn.rollback() # Desfaz a transação
+        return False
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
