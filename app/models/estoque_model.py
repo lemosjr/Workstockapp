@@ -200,3 +200,44 @@ def delete_material(material_id):
             cursor.close()
         if conn:
             release_connection(conn)
+
+def update_material_estoque(material_id, nova_quantidade):
+    """
+    Atualiza APENAS a coluna 'estoque_atual' de um material.
+    Usado para dar baixa ou estornar (retornar) estoque.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = """
+        UPDATE materiais SET
+            estoque_atual = %s,
+            data_atualizacao = CURRENT_TIMESTAMP
+        WHERE
+            id = %s;
+        """
+        
+        cursor.execute(query, (nova_quantidade, material_id))
+        conn.commit()
+        
+        if cursor.rowcount > 0:
+            print(f"Model (Estoque): Estoque do ID {material_id} atualizado para {nova_quantidade}.")
+            return True
+        else:
+            print(f"Model (Estoque): Erro ao atualizar estoque. ID {material_id} não encontrado.")
+            return False
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Erro ao atualizar estoque do material: {error}")
+        if conn:
+            conn.rollback()
+        return False
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)

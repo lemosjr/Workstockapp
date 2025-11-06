@@ -1,4 +1,5 @@
 from app.models import os_model
+from app.models import estoque_model
 import datetime
 
 """
@@ -174,3 +175,108 @@ def deletar_os(os_id):
         print(f"Controller Error: Erro ao deletar OS. {e}")
         # Mensagem amigável para o caso de FK (Foreign Key)
         return (False, "Esta OS não pode ser deletada, pois pode ter orçamentos ou materiais vinculados.")
+    
+def listar_materiais_da_os(os_id):
+    """
+    Controlador para buscar a lista de materiais de uma OS.
+    (Repassa a chamada para o os_model)
+    """
+    if not os_id:
+        return (False, [])
+        
+    print(f"Controller: Listando materiais da OS #{os_id}.")
+    try:
+        materiais = os_model.get_materiais_for_os(os_id)
+        return (True, materiais)
+    except Exception as e:
+        print(f"Controller Error: Erro ao listar materiais da OS: {e}")
+        return (False, [])
+
+def vincular_material_os(os_id, material_id, quantidade):
+    """
+    Controlador para vincular um material a uma OS e
+    dar BAIXA no estoque.
+    """
+    
+    # --- 1. Validação da Quantidade (Lógica de Negócio) ---
+    try:
+        quantidade_num = int(quantidade)
+        if quantidade_num <= 0:
+            return (False, "A quantidade deve ser maior que zero.")
+    except ValueError:
+        return (False, "Quantidade inválida.")
+
+    # --- 2. Buscar Dados do Estoque (Model) ---
+    material_data = estoque_model.get_material_by_id(material_id)
+    if not material_data:
+        return (False, "Erro: Material não encontrado no estoque.")
+        
+    estoque_atual = material_data['estoque_atual']
+    preco_custo = material_data['preco_custo']
+    material_nome = material_data['nome']
+
+    # --- 3. Validação de Estoque (Lógica de Negócio) ---
+    if quantidade_num > estoque_atual:
+        msg = (f"Estoque insuficiente para '{material_nome}'.\n"
+               f"Disponível: {estoque_atual} | Solicitado: {quantidade_num}")
+        return (False, msg)
+
+    # --- 4. Ação 1: Adicionar na OS (Model) ---
+    print(f"Controller: Adicionando {quantidade_num} de '{material_nome}' (R${preco_custo}) na OS {os_id}...")
+    
+    novo_id_vinculo = os_model.add_material_to_os(os_id, material_id, quantidade_num, preco_custo)
+    
+    if not novo_id_vinculo:
+        # Erro de duplicidade (o material já está na OS)
+        return (False, f"O material '{material_nome}' já está adicionado nesta OS. (Atualize a quantidade se desejar).")
+
+    # --- 5. Ação 2: Dar Baixa no Estoque (Model) ---
+    nova_quantidade_estoque = estoque_atual - quantidade_num
+    
+    print(f"Controller: Dando baixa no estoque de '{material_nome}'. (Atual: {estoque_atual} -> Nova: {nova_quantidade_estoque})")
+    
+    sucesso_baixa = estoque_model.update_material_estoque(material_id, nova_quantidade_estoque)
+    
+    if sucesso_baixa:
+        return (True, f"'{material_nome}' adicionado à OS e estoque atualizado!")
+    else:
+        # Isso é um problema (adicionou na OS mas não deu baixa).
+        # Por enquanto, apenas avisamos.
+        print(f"Controller CRÍTICO: Material ID {material_id} foi adicionado à OS {os_id}, MAS falhou ao dar baixa no estoque.")
+        return (False, "Material adicionado à OS, mas falhou ao atualizar o estoque.")
+
+
+def desvincular_material_os(os_material_id, material_id, quantidade_removida):
+    """
+    Controlador para remover um material de uma OS e
+    ESTORNAR (devolver) o item ao estoque.
+    """
+    
+    # --- 1. Buscar Dados do Estoque (Model) ---
+    material_data = estoque_model.get_material_by_id(material_id)
+    if not material_data:
+        return (False, "Erro: Material não encontrado no estoque.")
+        
+    estoque_atual = material_data['estoque_atual']
+    material_nome = material_data['nome']
+
+    # --- 2. Ação 1: Remover da OS (Model) ---
+    print(f"Controller: Removendo vínculo ID {os_material_id} da OS...")
+    
+    sucesso_remocao = os_model.remove_material_from_os(os_material_id)
+    
+    if not sucesso_remocao:
+        return (False, "Erro ao remover o material da OS.")
+
+    # --- 3. Ação 2: Estornar Estoque (Model) ---
+    nova_quantidade_estoque = estoque_atual + int(quantidade_removida)
+    
+    print(f"Controller: Estornando {quantidade_removida} de '{material_nome}' ao estoque. (Atual: {estoque_atual} -> Nova: {nova_quantidade_estoque})")
+    
+    sucesso_estorno = estoque_model.update_material_estoque(material_id, nova_quantidade_estoque)
+    
+    if sucesso_estorno:
+        return (True, f"'{material_nome}' removido da OS e estoque estornado!")
+    else:
+        print(f"Controller CRÍTICO: Material ID {material_id} foi removido da OS, MAS falhou ao estornar o estoque.")
+        return (False, "Material removido da OS, mas falhou ao atualizar o estoque.")

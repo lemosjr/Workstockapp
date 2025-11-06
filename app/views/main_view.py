@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 from app.views.estoque_view import EstoqueView
 from app.views.os_view import OSView
 from app.views.user_view import UserView
+from app.views.gerenciar_materiais_view import GerenciarMateriaisView
 # Importações dos Controllers
 from app.controllers import estoque_controller
 from app.controllers import os_controller
@@ -27,6 +28,7 @@ class MainView(ctk.CTk):
         self.cadastro_estoque_window = None
         self.cadastro_os_window = None
         self.cadastro_user_window = None
+        self.gerenciar_materiais_window = None
 
         self.create_main_widgets()
         
@@ -94,6 +96,15 @@ class MainView(ctk.CTk):
         )
         self.delete_os_button.pack(pady=5)
         # --- FIM MÓDULO OS ---
+
+        # --- BOTÃO GERENCIAR MATERIAIS ---
+        self.gerenciar_materiais_button = ctk.CTkButton(
+            left_frame,
+            text="Gerenciar Materiais da OS",
+            command=self._on_gerenciar_materiais, # Nova função
+            state="disabled" # Começa desabilitado
+        )
+        self.gerenciar_materiais_button.pack(pady=5)
         
         ctk.CTkFrame(left_frame, height=2, fg_color="gray").pack(fill="x", padx=10, pady=10)
 
@@ -382,6 +393,7 @@ class MainView(ctk.CTk):
             self.user_button.configure(state="normal")
             self.delete_material_button.configure(state="normal")
             self.delete_os_button.configure(state="normal")
+            self.gerenciar_materiais_button.configure(state="normal")
 
             print("View (Main): Acesso de 'Empresa' concedido.")
             return
@@ -414,3 +426,47 @@ class MainView(ctk.CTk):
             self.tab_view.delete("Estoque")
         except Exception:
             pass # Ignora se a aba já foi deletada
+
+    # --- MÉTODO NOVO ---
+    def _on_gerenciar_materiais(self):
+        """
+        Chamado pelo botão "Gerenciar Materiais da OS".
+        Abre a janela de gerenciamento para a OS selecionada.
+        """
+        try:
+            # 1. Pega a OS selecionada na tabela
+            selected_item = self.os_tree.focus()
+            if not selected_item:
+                messagebox.showwarning("Aviso", "Por favor, selecione uma Ordem de Serviço na tabela primeiro.")
+                return
+
+            # 2. Pega o ID da OS
+            item_values = self.os_tree.item(selected_item, "values")
+            os_id = int(item_values[0])
+            
+            print(f"View (Main): Abrindo gerenciador de materiais para OS #{os_id}")
+
+            # 3. Abre a nova janela
+            if self.gerenciar_materiais_window is None or not self.gerenciar_materiais_window.winfo_exists():
+                self.gerenciar_materiais_window = GerenciarMateriaisView(master=self, os_id=os_id)
+                # BIND: Quando a janela fechar, atualize as listas!
+                self.gerenciar_materiais_window.bind("<Destroy>", self.on_materiais_closed)
+            else:
+                self.gerenciar_materiais_window.focus()
+        
+        except (IndexError, TypeError, ValueError) as e:
+            print(f"View (Main) Erro: Não foi possível obter o ID da OS. {e}")
+            messagebox.showwarning("Aviso", "Não foi possível identificar a OS selecionada. Tente novamente.")
+
+    # --- MÉTODO NOVO ---
+    def on_materiais_closed(self, event):
+        """
+        Chamado quando a janela GerenciarMateriaisView é fechada.
+        Atualiza as listas de OS e Estoque.
+        """
+        # Verifica se o evento veio da janela correta
+        if event.widget == self.gerenciar_materiais_window:
+            print("View (Main): Janela de materiais fechada. Atualizando listas...")
+            # Atualiza AMBAS as listas, pois o estoque mudou
+            self.load_materials()
+            self.load_os() # (Pode ter atualizações futuras, como custo total)

@@ -189,3 +189,142 @@ def delete_os(os_id):
             cursor.close()
         if conn:
             release_connection(conn)
+
+def add_material_to_os(os_id, material_id, quantidade, preco_custo):
+    """
+    Adiciona um novo material (e sua quantidade) a uma OS.
+    Grava o preço do custo no momento da adição.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = """
+        INSERT INTO os_materiais (os_id, material_id, quantidade, preco_custo_na_data)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id;
+        """
+        
+        cursor.execute(query, (os_id, material_id, quantidade, preco_custo))
+        new_id = cursor.fetchone()[0]
+        conn.commit()
+        
+        print(f"Model (OS-Material): Material ID {material_id} adicionado à OS ID {os_id}.")
+        return new_id
+        
+    except psycopg2.IntegrityError as e:
+        # Captura o erro da 'UNIQUE constraint (os_id, material_id)'
+        print(f"Model Error (OS-Material): Item já existe na OS. {e}")
+        if conn:
+            conn.rollback()
+        return None # Indica falha por duplicidade
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS-Material): Erro ao adicionar material: {error}")
+        if conn:
+            conn.rollback()
+        return None
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
+
+def get_materiais_for_os(os_id):
+    """
+    Busca a lista de materiais vinculados a uma OS específica.
+    Usa JOIN para trazer os nomes e SKUs dos materiais.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=extras.DictCursor)
+        
+        # Esta query é o coração: ela junta as 3 tabelas
+        query = """
+        SELECT 
+            osm.id as os_material_id, -- ID da linha na tabela 'os_materiais'
+            m.id as material_id,
+            m.nome as material_nome,
+            m.sku,
+            osm.quantidade,
+            osm.preco_custo_na_data
+        FROM os_materiais AS osm
+        JOIN materiais AS m ON osm.material_id = m.id
+        WHERE osm.os_id = %s;
+        """
+        
+        cursor.execute(query, (os_id,))
+        materiais = cursor.fetchall()
+        return materiais # Lista de dicionários
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS-Material): Erro ao buscar materiais da OS: {error}")
+        return []
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
+
+def remove_material_from_os(os_material_id):
+    """
+    Remove uma linha da tabela 'os_materiais' pelo ID único dela.
+    (os_material_id é o 'osm.id' da query anterior)
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = "DELETE FROM os_materiais WHERE id = %s;"
+        
+        cursor.execute(query, (os_material_id,))
+        conn.commit()
+        return cursor.rowcount > 0 # True se deletou
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS-Material): Erro ao remover material da OS: {error}")
+        if conn:
+            conn.rollback()
+        return False
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
+
+def update_material_quantidade_in_os(os_material_id, nova_quantidade):
+    """
+    Atualiza a quantidade de um material já vinculado a uma OS.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = "UPDATE os_materiais SET quantidade = %s WHERE id = %s;"
+        
+        cursor.execute(query, (nova_quantidade, os_material_id))
+        conn.commit()
+        return cursor.rowcount > 0 # True se atualizou
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS-Material): Erro ao atualizar quantidade: {error}")
+        if conn:
+            conn.rollback()
+        return False
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
