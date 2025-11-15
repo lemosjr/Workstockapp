@@ -7,7 +7,36 @@ Camada Model (Modelo) para Usuários.
 
 Responsabilidade:
 - Funções para buscar dados de usuários no banco.
+- Funções para criar novos usuários.
 """
+
+def get_user_by_email(email):
+    """
+    Busca um usuário específico pelo seu email.
+    O email é UNIQUE, então deve retornar 0 ou 1 usuário.
+    Retorna um dicionário (DictRow) com os dados do usuário.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor(cursor_factory=extras.DictCursor)
+        
+        query = "SELECT * FROM usuarios WHERE email = %s AND ativo = TRUE;"
+        cursor.execute(query, (email,))
+        
+        user_data = cursor.fetchone() # Pega apenas um resultado
+        return user_data
+        
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Erro ao buscar usuário por email ({email}): {error}")
+        return None
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
 
 def create_user(nome, email, senha_hash, perfil):
     """
@@ -53,33 +82,3 @@ def create_user(nome, email, senha_hash, perfil):
             cursor.close()
         if conn:
             release_connection(conn)
-
-def get_user_by_email(email):
-    """
-    Busca um usuário específico pelo seu email.
-    O email é UNIQUE, então deve retornar 0 ou 1 usuário.
-    Retorna um dicionário (DictRow) com os dados do usuário.
-    """
-    conn = None
-    cursor = None
-    try:
-        conn = get_connection()
-        cursor = conn.cursor(cursor_factory=extras.DictCursor)
-        
-        query = "SELECT * FROM usuarios WHERE email = %s AND ativo = TRUE;"
-        cursor.execute(query, (email,))
-        
-        user_data = cursor.fetchone() # Pega apenas um resultado
-        return user_data
-        
-    except (Exception, psycopg2.DatabaseError) as error:
-        print(f"Erro ao buscar usuário por email ({email}): {error}")
-        return None
-        
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            release_connection(conn)
-
-# (Futuramente, adicionaríamos: create_user, update_user, deactivate_user, etc.)

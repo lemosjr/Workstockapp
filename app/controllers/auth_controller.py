@@ -40,35 +40,15 @@ def login(email, senha):
     # --- O Ponto Principal: Comparando Senhas com BCRYPT ---
     
     try:
-        # --- DEBUG: Vamos verificar os valores ---
-        print("\n--- INICIANDO DEBUG BCRYPT ---")
-
-        print(f"Senha (texto puro) recebida: '{senha}'")
-        senha_bytes = senha.encode('utf-8')
-        print(f"Senha (bytes) para comparar: {senha_bytes}")
-
-        hash_do_banco = user_data['senha_hash']
-        print(f"Hash (string) vindo do DB: '{hash_do_banco}'")
-        hash_bytes = hash_do_banco.encode('utf-8')
-        print(f"Hash (bytes) para comparar: {hash_bytes}")
-
-        hash_correto_conhecido = '$2b$12$DWO.0.Nb.j/5585.i08.GON.GV0G2.d.m.3o/fiosXg9Oq9o.3pXG'
-        print(f"Hash (correto) esperado:   '{hash_correto_conhecido}'")
-
-        # Vamos verificar se a string do banco tem espaços ou é diferente
-        if hash_do_banco == hash_correto_conhecido:
-            print("Verificação (String): Hash do banco É IGUAL ao esperado.")
-        else:
-            print("Verificação (String): !!! ATENÇÃO !!! HASH DO BANCO É DIFERENTE DO ESPERADO!")
-            print(f"Comprimento do Hash do DB: {len(hash_do_banco)}")
-            print(f"Comprimento do Hash Esperado: {len(hash_correto_conhecido)}")
-
-        print("--- FIM DEBUG BCRYPT ---\n")
-        # --- FIM DEBUG ---
-
+        # Pega a senha em texto puro e transforma em bytes
+        senha_bytes = senha.strip().encode('utf-8')
+        
+        # Pega o hash salvo no banco e transforma em bytes
+        hash_bytes = user_data['senha_hash'].strip().encode('utf-8')
+        
         # O Bcrypt compara o hash da senha digitada com o hash do banco
         is_valid = bcrypt.checkpw(senha_bytes, hash_bytes)
-
+        
         if is_valid:
             print(f"Controller (Auth): Login bem-sucedido para {email}.")
             # Login OK. Retornamos os dados do usuário para a "sessão"
@@ -84,7 +64,7 @@ def login(email, senha):
             # A senha estava errada
             print(f"Controller (Auth): Falha no login. Senha incorreta para {email}.")
             return (False, "E-mail ou senha inválidos.")
-
+            
     except Exception as e:
         print(f"Controller (Auth): Erro crítico durante verificação de senha. {e}")
         return (False, "Ocorreu um erro no sistema. Tente novamente.")

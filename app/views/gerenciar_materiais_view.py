@@ -9,6 +9,7 @@ Responsabilidade:
 - Exibir os materiais já vinculados a uma OS.
 - Permitir adicionar novos materiais do estoque (dando baixa).
 - Permitir remover materiais da OS (estornando estoque).
+- Exibir e salvar o orçamento (Materiais + Mão de Obra).
 """
 
 class GerenciarMateriaisView(ctk.CTkToplevel):
@@ -23,7 +24,7 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
             
         self.os_id = os_id
         self.title(f"Gerenciar Materiais da OS #{self.os_id}")
-        self.geometry("1000x800")
+        self.geometry("900x500")
         
         self.transient(master)
         self.grab_set()
@@ -37,7 +38,7 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
         # Carrega os dados iniciais
         self._load_inventory_list() # Carrega o ComboBox de estoque
         self._load_linked_materials() # Carrega a tabela de materiais da OS
-        self._load_orcamento_data()
+        self._load_orcamento_data() # Carrega os dados do orçamento
 
     def _setup_styles(self):
         """ Configura o estilo do Treeview para o tema escuro. """
@@ -67,7 +68,7 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
         # --- Frame Direito (Adicionar + ORÇAMENTO) ---
         right_frame = ctk.CTkFrame(self, width=350)
         right_frame.pack(side="right", fill="y", padx=10, pady=10)
-        right_frame.pack_propagate(False) 
+        right_frame.pack_propagate(False) # Impede que o frame encolha
 
         ctk.CTkLabel(right_frame, text="Adicionar do Estoque", font=("Arial", 16)).pack(pady=5)
         
@@ -134,6 +135,125 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
         
         self.linked_tree.pack(fill="both", expand=True, padx=5, pady=5)
 
+    def _load_inventory_list(self):
+        """ Busca o estoque completo para popular o ComboBox. """
+        print("View (Mat): Carregando lista do estoque...")
+        sucesso, materiais = estoque_controller.listar_materiais()
+        if not sucesso:
+            messagebox.showerror("Erro", "Não foi possível carregar o estoque.")
+            return
+
+        combo_values = []
+        self.inventory_map = {} # Limpa o mapa
+
+        for m in materiais:
+            # Texto amigável para o ComboBox
+            display_name = f"{m['nome']} (Estoque: {m['estoque_atual']})"
+            combo_values.append(display_name)
+            
+            # Mapeia o texto amigável de volta para o ID do material
+            self.inventory_map[display_name] = m['id']
+            
+        self.material_combo.configure(values=combo_values)
+        if combo_values:
+            self.material_combo.set(combo_values[0]) # Seleciona o primeiro
+        else:
+            self.material_combo.set("") # Limpa se não houver estoque
+
+    def _load_linked_materials(self):
+        """ Busca os materiais já vinculados a esta OS. """
+        # Limpa a tabela
+        for item in self.linked_tree.get_children():
+            self.linked_tree.delete(item)
+            
+        sucesso, dados = os_controller.listar_materiais_da_os(self.os_id)
+        
+        if sucesso:
+            for item in dados:
+                valores = (
+                    item['os_material_id'],
+                    item['material_id'],
+                    item['material_nome'],
+                    item['sku'],
+                    item['quantidade'],
+                    f"{item['preco_custo_na_data']:.2f}"
+                )
+                self.linked_tree.insert("", "end", values=valores)
+        else:
+            messagebox.showerror("Erro", "Não foi possível carregar os materiais desta OS.")
+
+    def _on_add_material(self):
+        """ Chamado pelo botão 'Adicionar Material'. """
+        
+        selected_name = self.material_combo.get()
+        quantidade = self.quantidade_entry.get()
+        
+        if not selected_name or not self.inventory_map or selected_name == "Carregando...":
+            messagebox.showwarning("Aviso", "Nenhum material selecionado.")
+            return
+            
+        try:
+            material_id = self.inventory_map[selected_name]
+        except KeyError:
+            messagebox.showwarning("Aviso", "Material inválido ou não encontrado.")
+            return
+            
+        print(f"View (Mat): Solicitando ao Controller para vincular OS {self.os_id} <-> Mat {material_id} (Qtd: {quantidade})")
+
+        sucesso, msg = os_controller.vincular_material_os(self.os_id, material_id, quantidade)
+        
+        if sucesso:
+            messagebox.showinfo("Sucesso", msg)
+            # Recarrega TUDO para mostrar as mudanças
+            self._load_inventory_list() 
+            self._load_linked_materials() 
+            self._load_orcamento_data() # Atualiza o orçamento
+            self.quantidade_entry.delete(0, 'end') # Limpa o campo
+        else:
+            messagebox.showerror("Erro ao Adicionar", msg)
+            # Recarrega a lista de estoque, pois a validação pode ter falhado
+            # mas a lista de materiais pode estar desatualizada
+            self._load_inventory_list()
+
+    def _on_remove_material(self):
+        """ Chamado pelo botão 'Remover Material Selecionado'. """
+        
+        selected_item = self.linked_tree.focus()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Selecione um material da lista para remover.")
+            return
+
+        item_values = self.linked_tree.item(selected_item, "values")
+        
+        try:
+            os_material_id = int(item_values[0]) # ID do VÍNCULO
+            material_id = int(item_values[1])    # ID do MATERIAL
+            material_nome = item_values[2]
+            quantidade_removida = int(item_values[4])
+        except (IndexError, TypeError, ValueError):
+            messagebox.showerror("Erro", "Não foi possível ler os dados do item selecionado.")
+            return
+
+        if not messagebox.askyesno("Confirmar Remoção", 
+                                   f"Deseja remover '{material_nome}' (Qtd: {quantidade_removida}) desta OS?\n\n"
+                                   f"O estoque será ESTORNADO (devolvido)."):
+            return
+
+        print(f"View (Mat): Solicitando ao Controller desvincular ID {os_material_id} (Estornar Qtd {quantidade_removida} para Mat {material_id})")
+        
+        sucesso, msg = os_controller.desvincular_material_os(os_material_id, material_id, quantidade_removida)
+        
+        if sucesso:
+            messagebox.showinfo("Sucesso", msg)
+            # Recarrega TUDO
+            self._load_inventory_list()
+            self._load_linked_materials()
+            self._load_orcamento_data() # Atualiza o orçamento
+        else:
+            messagebox.showerror("Erro ao Remover", msg)
+
+    # --- NOVAS FUNÇÕES DE ORÇAMENTO ---
+
     def _load_orcamento_data(self):
         """
         Busca os dados de orçamento (salvos) e atualiza os campos.
@@ -142,16 +262,13 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
         sucesso, data = os_controller.get_orcamento_os(self.os_id)
         
         if sucesso:
-            # Pega os valores do banco
             custo_materiais = data.get('materiais', 0.0)
             custo_mo = data.get('mao_de_obra', 0.0)
             custo_total = data.get('total', 0.0)
             
-            # Atualiza os Labels
             self.custo_materiais_label.configure(text=f"R$ {custo_materiais:.2f}")
             self.custo_total_label.configure(text=f"R$ {custo_total:.2f}")
             
-            # Atualiza o Entry (só limpamos e inserimos)
             self.mao_de_obra_entry.delete(0, 'end')
             self.mao_de_obra_entry.insert(0, f"{custo_mo:.2f}")
             
@@ -179,123 +296,3 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
             self._load_orcamento_data()
         else:
             messagebox.showerror("Erro ao Salvar", msg)
-
-    def _load_inventory_list(self):
-        """ Busca o estoque completo para popular o ComboBox. """
-        print("View (Mat): Carregando lista do estoque...")
-        sucesso, materiais = estoque_controller.listar_materiais()
-        if not sucesso:
-            messagebox.showerror("Erro", "Não foi possível carregar o estoque.")
-            return
-
-        combo_values = []
-        self.inventory_map = {} # Limpa o mapa
-
-        for m in materiais:
-            # Texto amigável para o ComboBox
-            display_name = f"{m['nome']} (Estoque: {m['estoque_atual']})"
-            combo_values.append(display_name)
-            
-            # Mapeia o texto amigável de volta para o ID do material
-            self.inventory_map[display_name] = m['id']
-            
-        self.material_combo.configure(values=combo_values)
-        if combo_values:
-            self.material_combo.set(combo_values[0]) # Seleciona o primeiro
-
-    def _load_linked_materials(self):
-        """ Busca os materiais já vinculados a esta OS. """
-        # Limpa a tabela
-        for item in self.linked_tree.get_children():
-            self.linked_tree.delete(item)
-            
-        sucesso, dados = os_controller.listar_materiais_da_os(self.os_id)
-        
-        if sucesso:
-            for item in dados:
-                valores = (
-                    item['os_material_id'],
-                    item['material_id'],
-                    item['material_nome'],
-                    item['sku'],
-                    item['quantidade'],
-                    f"{item['preco_custo_na_data']:.2f}"
-                )
-                self.linked_tree.insert("", "end", values=valores)
-        else:
-            messagebox.showerror("Erro", "Não foi possível carregar os materiais desta OS.")
-
-    def _on_add_material(self):
-        """ Chamado pelo botão 'Adicionar Material'. """
-        
-        # 1. Obter os dados do formulário
-        selected_name = self.material_combo.get()
-        quantidade = self.quantidade_entry.get()
-        
-        # 2. Validar
-        if not selected_name or not self.inventory_map:
-            messagebox.showwarning("Aviso", "Nenhum material selecionado.")
-            return
-            
-        try:
-            # 3. Usar o mapa para encontrar o ID
-            material_id = self.inventory_map[selected_name]
-        except KeyError:
-            messagebox.showwarning("Aviso", "Material inválido ou não encontrado.")
-            return
-            
-        print(f"View (Mat): Solicitando ao Controller para vincular OS {self.os_id} <-> Mat {material_id} (Qtd: {quantidade})")
-
-        # 4. Chamar o Controller
-        sucesso, msg = os_controller.vincular_material_os(self.os_id, material_id, quantidade)
-        
-        if sucesso:
-            messagebox.showinfo("Sucesso", msg)
-            # 5. Recarregar TUDO para mostrar as mudanças
-            self._load_inventory_list() # Recarrega o ComboBox (para estoque atualizado)
-            self._load_linked_materials() # Recarrega a Tabela (para item novo)
-            self._load_orcamento_data() # Recarrega o orçamento (custo atualizado)
-            self.quantidade_entry.delete(0, 'end') # Limpa o campo
-        else:
-            messagebox.showerror("Erro ao Adicionar", msg)
-
-    def _on_remove_material(self):
-        """ Chamado pelo botão 'Remover Material Selecionado'. """
-        
-        # 1. Obter o item selecionado da tabela
-        selected_item = self.linked_tree.focus()
-        if not selected_item:
-            messagebox.showwarning("Aviso", "Selecione um material da lista para remover.")
-            return
-
-        # 2. Obter os valores (precisamos do ID e da quantidade para estornar)
-        item_values = self.linked_tree.item(selected_item, "values")
-        
-        try:
-            os_material_id = int(item_values[0]) # ID do VÍNCULO (da tabela os_materiais)
-            material_id = int(item_values[1])    # ID do MATERIAL (para estornar)
-            material_nome = item_values[2]
-            quantidade_removida = int(item_values[4])
-        except (IndexError, TypeError, ValueError):
-            messagebox.showerror("Erro", "Não foi possível ler os dados do item selecionado.")
-            return
-
-        # 3. Pedir Confirmação
-        if not messagebox.askyesno("Confirmar Remoção", 
-                                   f"Deseja remover '{material_nome}' (Qtd: {quantidade_removida}) desta OS?\n\n"
-                                   f"O estoque será ESTORNADO (devolvido)."):
-            return
-
-        # 4. Chamar o Controller
-        print(f"View (Mat): Solicitando ao Controller desvincular ID {os_material_id} (Estornar Qtd {quantidade_removida} para Mat {material_id})")
-        
-        sucesso, msg = os_controller.desvincular_material_os(os_material_id, material_id, quantidade_removida)
-        
-        if sucesso:
-            messagebox.showinfo("Sucesso", msg)
-            # 5. Recarregar TUDO
-            self._load_inventory_list()
-            self._load_linked_materials()
-            self._load_orcamento_data()
-        else:
-            messagebox.showerror("Erro ao Remover", msg)

@@ -8,7 +8,10 @@ Camada Model (Modelo) para Ordem de Serviço (OS).
 Responsabilidade:
 - Conter TODA a lógica de banco de dados (queries SQL)
 - Funções para Criar, Ler, Atualizar e Deletar (CRUD) Ordens de Serviço.
+- Funções para gerenciar a tabela-ponte 'os_materiais'.
 """
+
+# --- Seção 1: CRUD Básico da OS ---
 
 def create_os(data):
     """
@@ -178,7 +181,8 @@ def delete_os(os_id):
             return False # Nenhuma linha foi afetada
         
     except (Exception, psycopg2.DatabaseError) as error:
-        # Futuramente, se a OS tiver materiais (FK), o erro será capturado aqui.
+        # Graças ao 'ON DELETE CASCADE', isto também deletará
+        # os itens em 'os_materiais'
         print(f"Model Error (OS): Erro ao deletar OS: {error}")
         if conn:
             conn.rollback() # Desfaz a transação
@@ -189,6 +193,8 @@ def delete_os(os_id):
             cursor.close()
         if conn:
             release_connection(conn)
+
+# --- Seção 2: Vínculo OS <-> Material ---
 
 def add_material_to_os(os_id, material_id, quantidade, preco_custo):
     """
@@ -244,7 +250,6 @@ def get_materiais_for_os(os_id):
         conn = get_connection()
         cursor = conn.cursor(cursor_factory=extras.DictCursor)
         
-        # Esta query é o coração: ela junta as 3 tabelas
         query = """
         SELECT 
             osm.id as os_material_id, -- ID da linha na tabela 'os_materiais'
@@ -329,6 +334,8 @@ def update_material_quantidade_in_os(os_material_id, nova_quantidade):
         if conn:
             release_connection(conn)
 
+# --- Seção 3: Orçamento e Fluxo de Aprovação ---
+
 def update_os_orcamento(os_id, custo_materiais, custo_mao_de_obra, custo_total):
     """
     Atualiza os campos de orçamento de uma OS específica.
@@ -382,6 +389,9 @@ def update_os_status(os_id, novo_status):
         conn = get_connection()
         cursor = conn.cursor()
         
+        # Garante que o status ENUM exista antes de usá-lo
+        cursor.execute("ALTER TYPE status_os ADD VALUE IF NOT EXISTS %s", (novo_status,))
+        
         query = "UPDATE ordens_servico SET status = %s WHERE id = %s;"
         
         cursor.execute(query, (novo_status, os_id))
@@ -425,7 +435,7 @@ def set_os_orcamento_enviado(os_id):
         if cursor: cursor.close()
         if conn: release_connection(conn)
 
-def set_os_orcamento_aprovado(os_id, novo_status):
+def set_os_orcamento_aprovado(os_id, novo_status_aprovado):
     """
     Define o status (ex: 'em andamento') e salva a data de aprovação.
     """
@@ -435,6 +445,9 @@ def set_os_orcamento_aprovado(os_id, novo_status):
         conn = get_connection()
         cursor = conn.cursor()
         
+        # Garante que o status ENUM exista
+        cursor.execute("ALTER TYPE status_os ADD VALUE IF NOT EXISTS %s", (novo_status_aprovado,))
+        
         query = """
         UPDATE ordens_servico SET 
             status = %s,
@@ -442,7 +455,7 @@ def set_os_orcamento_aprovado(os_id, novo_status):
         WHERE id = %s;
         """
         
-        cursor.execute(query, (novo_status, os_id))
+        cursor.execute(query, (novo_status_aprovado, os_id))
         conn.commit()
         return cursor.rowcount > 0
 

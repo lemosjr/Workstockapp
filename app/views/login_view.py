@@ -57,9 +57,9 @@ class LoginView(ctk.CTk):
         self.senha_entry.bind("<Return>", self._on_login_click)
 
         # --- Dados de Teste (Para facilitar o desenvolvimento) ---
-        # Lembre-se de apagar isso na versão de produção
-        self.email_entry.insert(0, "admin@workstock.com")
-        self.senha_entry.insert(0, "admin")
+        # (Você pode comentar ou apagar estas linhas)
+        self.email_entry.insert(0, "admin@empresa.com")
+        self.senha_entry.insert(0, "admin123")
 
     def _on_login_click(self, event=None): # 'event=None' é necessário para o bind
         """

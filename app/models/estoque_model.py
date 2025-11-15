@@ -66,8 +66,7 @@ def get_all_materials():
     cursor = None
     try:
         conn = get_connection()
-        # Usamos DictCursor para que o resultado venha como dicionário (ex: {'id': 1, 'nome': 'Tinta'})
-        # em vez de tupla (ex: (1, 'Tinta'))
+        # Usamos DictCursor para que o resultado venha como dicionário
         cursor = conn.cursor(cursor_factory=extras.DictCursor)
         
         query = "SELECT * FROM materiais ORDER BY nome ASC;"

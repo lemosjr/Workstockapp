@@ -18,7 +18,7 @@ class EstoqueView(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
         self.title("Cadastrar Novo Material")
-        self.geometry("600x800")
+        self.geometry("400x500")
         
         # Faz com que esta janela fique "na frente" da principal
         self.transient(master)
@@ -32,7 +32,7 @@ class EstoqueView(ctk.CTkToplevel):
         frame.pack(padx=20, pady=20, fill="both", expand=True)
 
         # --- Campos do Formulário ---
-        # [cite_start]Baseado nos requisitos [cite: 57, 58, 59, 60, 61, 62, 64, 65]
+        # Baseado nos requisitos
         
         ctk.CTkLabel(frame, text="Nome do Material:*").pack(anchor="w")
         self.nome_entry = ctk.CTkEntry(frame, width=300)

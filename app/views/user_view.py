@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from app.controllers import user_controller # O novo controller
+from app.controllers import user_controller # O controller de usuário
 from tkinter import messagebox
 
 """
@@ -17,7 +17,7 @@ class UserView(ctk.CTkToplevel):
         super().__init__(master)
         
         self.title("Cadastrar Novo Usuário")
-        self.geometry("400x550")
+        self.geometry("400x600")
         
         self.transient(master) # Mantém esta janela na frente
         self.grab_set() # Torna a janela "modal"

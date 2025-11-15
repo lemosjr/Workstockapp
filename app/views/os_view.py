@@ -4,6 +4,12 @@ from tkinter import messagebox
 
 """
 Camada View (Visão) para Cadastro e Edição de Ordem de Serviço (OS).
+
+Responsabilidade:
+- Exibir a interface gráfica (widgets) para o usuário.
+- Capturar a entrada do usuário.
+- Chamar o OS_Controller quando a ação de salvar for necessária.
+- Funcionar em modo "Criar" (os_id=None) ou "Editar" (os_id=ID).
 """
 
 class OSView(ctk.CTkToplevel):
@@ -17,7 +23,7 @@ class OSView(ctk.CTkToplevel):
         
         self.os_id = os_id # Armazena o ID (None se for "Criar")
         
-        # Listas de opções
+        # Listas de opções (baseadas nos ENUMs do DB e Controller)
         self.prioridades_list = ["baixa", "média", "alta", "urgente"]
         self.status_list = ["aberta", "em andamento", "aguardando aprovação", "concluída", "cancelada"]
         
@@ -30,19 +36,18 @@ class OSView(ctk.CTkToplevel):
         else:
             self.title("Criar Nova Ordem de Serviço")
         
-        self.geometry("450x650")
+        self.geometry("450x650") # Um pouco mais alta
 
     def create_widgets(self):
         frame = ctk.CTkFrame(self)
         frame.pack(padx=20, pady=20, fill="both", expand=True)
-
-        # (O layout dos widgets é o mesmo de antes)
         
         ctk.CTkLabel(frame, text="Tipo de Serviço:*").pack(anchor="w")
         self.tipo_servico_entry = ctk.CTkEntry(frame)
         self.tipo_servico_entry.pack(fill="x", pady=(0, 10))
 
         ctk.CTkLabel(frame, text="Endereço Completo:*").pack(anchor="w")
+        # Usamos Textbox para endereços longos (multi-linha)
         self.endereco_text = ctk.CTkTextbox(frame, height=80)
         self.endereco_text.pack(fill="x", pady=(0, 10))
 
@@ -50,6 +55,7 @@ class OSView(ctk.CTkToplevel):
         self.descricao_text = ctk.CTkTextbox(frame, height=120)
         self.descricao_text.pack(fill="x", pady=(0, 10))
         
+        # --- Linha para Prioridade e Status ---
         combo_frame = ctk.CTkFrame(frame, fg_color="transparent")
         combo_frame.pack(fill="x", pady=(0, 10))
         
@@ -61,12 +67,13 @@ class OSView(ctk.CTkToplevel):
         self.status_combo = ctk.CTkComboBox(combo_frame, values=self.status_list)
         self.status_combo.pack(side="left", expand=True, fill="x")
         
+        # --- Data ---
         ctk.CTkLabel(frame, text="Data Conclusão Prevista (DD/MM/AAAA):").pack(anchor="w")
         self.data_prevista_entry = ctk.CTkEntry(frame)
         self.data_prevista_entry.pack(fill="x", pady=(0, 10))
 
-        # O botão agora chama self.salvar (que terá a nova lógica)
-        self.save_button = ctk.CTkButton(frame, text="Salvar Alterações", command=self.salvar)
+        # --- Botão Salvar ---
+        self.save_button = ctk.CTkButton(frame, text="Salvar", command=self.salvar)
         self.save_button.pack(pady=20, side="bottom")
 
     def _load_data_for_edit(self):
@@ -79,6 +86,9 @@ class OSView(ctk.CTkToplevel):
         sucesso, dados = os_controller.buscar_os_por_id(self.os_id)
         
         if sucesso:
+            # Atualiza o texto do botão
+            self.save_button.configure(text="Salvar Alterações")
+            
             # Preenche os campos com os dados
             self.tipo_servico_entry.insert(0, dados['tipo_servico'])
             
@@ -101,10 +111,10 @@ class OSView(ctk.CTkToplevel):
         """
         Coleta os dados e decide se deve CRIAR ou ATUALIZAR.
         """
-        # 1. Coletar dados da View (igual a antes)
+        # 1. Coletar dados da View
         data = {
             "tipo_servico": self.tipo_servico_entry.get(),
-            "endereco": self.endereco_text.get("1.0", "end-1c"),
+            "endereco": self.endereco_text.get("1.0", "end-1c"), # Pega todo o texto
             "descricao": self.descricao_text.get("1.0", "end-1c"),
             "prioridade": self.prioridade_combo.get(),
             "status": self.status_combo.get(),

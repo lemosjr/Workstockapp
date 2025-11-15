@@ -59,10 +59,8 @@ class MainView(ctk.CTk):
                      font=ctk.CTkFont(size=16, weight="bold")).pack(pady=(10, 0))
 
         self.user_button = ctk.CTkButton(
-            left_frame, 
-            text="Cadastrar Usuário",
-            command=self.abrir_cadastro_usuario,
-            state="disabled" # Começa desabilitado por padrão
+            left_frame, text="Cadastrar Usuário",
+            command=self.abrir_cadastro_usuario, state="disabled"
         )
         self.user_button.pack(pady=10)
         
@@ -73,69 +71,79 @@ class MainView(ctk.CTk):
         ctk.CTkLabel(left_frame, text="Módulo OS", font=("Arial", 16)).pack(pady=10)
         
         self.nova_os_button = ctk.CTkButton(
-            left_frame, 
-            text="Criar Nova OS",
+            left_frame, text="Criar Nova OS",
             command=lambda: self.abrir_cadastro_os(os_id=None)
         )
         self.nova_os_button.pack(pady=10)
 
         self.refresh_os_button = ctk.CTkButton(
-            left_frame,
-            text="Atualizar Lista de OS",
-            command=self.load_os
+            left_frame, text="Atualizar Lista de OS", command=self.load_os
         )
         self.refresh_os_button.pack(pady=5)
         
         self.delete_os_button = ctk.CTkButton(
-            left_frame,
-            text="Deletar OS",
-            command=self._on_delete_os, # Nova função
-            state="disabled", # Começa desabilitado
-            fg_color="#DB3E3E", # Cor vermelha
-            hover_color="#B73030"
+            left_frame, text="Deletar OS", command=self._on_delete_os,
+            state="disabled", fg_color="#DB3E3E", hover_color="#B73030"
         )
         self.delete_os_button.pack(pady=5)
-        # --- FIM MÓDULO OS ---
 
-        # --- BOTÃO GERENCIAR MATERIAIS ---
         self.gerenciar_materiais_button = ctk.CTkButton(
-            left_frame,
-            text="Gerenciar Materiais da OS",
-            command=self._on_gerenciar_materiais, # Nova função
-            state="disabled" # Começa desabilitado
+            left_frame, text="Gerenciar Materiais da OS",
+            command=self._on_gerenciar_materiais, state="disabled"
         )
         self.gerenciar_materiais_button.pack(pady=5)
         
+        # --- BOTÕES DE APROVAÇÃO (NOVOS) ---
+        ctk.CTkLabel(left_frame, text="Fluxo de Orçamento:", 
+                     font=ctk.CTkFont(size=12, weight="bold")).pack(pady=(15, 5))
+        
+        # Botão para EMPRESA enviar
+        self.enviar_orcamento_button = ctk.CTkButton(
+            left_frame, text="Enviar para Aprovação",
+            command=self._on_enviar_orcamento, state="disabled"
+        )
+        self.enviar_orcamento_button.pack(pady=5)
+
+        # Botões para PROPRIETÁRIO
+        self.aprovar_orcamento_button = ctk.CTkButton(
+            left_frame, text="Aprovar Orçamento",
+            command=self._on_aprovar_orcamento, state="disabled",
+            fg_color="#4CAF50", hover_color="#3B8E40" # Verde
+        )
+        self.aprovar_orcamento_button.pack(pady=5)
+        
+        self.rejeitar_orcamento_button = ctk.CTkButton(
+            left_frame, text="Rejeitar Orçamento",
+            command=self._on_rejeitar_orcamento, state="disabled",
+            fg_color="#DB3E3E", hover_color="#B73030" # Vermelho
+        )
+        self.rejeitar_orcamento_button.pack(pady=5)
+        # --- FIM DO FLUXO DE ORÇAMENTO ---
+
         ctk.CTkFrame(left_frame, height=2, fg_color="gray").pack(fill="x", padx=10, pady=10)
 
         # --- MÓDULO ESTOQUE ---
         ctk.CTkLabel(left_frame, text="Módulo Estoque", font=("Arial", 16)).pack(pady=10)
         
         self.novo_material_button = ctk.CTkButton(
-            left_frame, 
-            text="Cadastrar Novo Material",
+            left_frame, text="Cadastrar Novo Material",
             command=self.abrir_cadastro_material
         )
         self.novo_material_button.pack(pady=10)
 
         self.refresh_material_button = ctk.CTkButton(
-            left_frame,
-            text="Atualizar Estoque",
+            left_frame, text="Atualizar Estoque",
             command=self.load_materials
         )
         self.refresh_material_button.pack(pady=5)
 
         self.delete_material_button = ctk.CTkButton(
-            left_frame,
-            text="Deletar Material",
-            command=self._on_delete_material,
-            state="disabled", # Começa desabilitado
-            fg_color="#DB3E3E", # Cor vermelha para "perigo"
-            hover_color="#B73030"
+            left_frame, text="Deletar Material",
+            command=self._on_delete_material, state="disabled",
+            fg_color="#DB3E3E", hover_color="#B73030"
         )
         self.delete_material_button.pack(pady=5)
         # --- FIM MÓDULO ESTOQUE ---
-
 
         # --- Frame Direito (Conteúdo com Abas) ---
         self.tab_view = ctk.CTkTabview(self)
@@ -179,10 +187,8 @@ class MainView(ctk.CTk):
                 f"Esta ação não pode ser desfeita."
             )
             
-            if not confirm:
-                return 
+            if not confirm: return 
 
-            print(f"View (Main): Solicitando ao controller para deletar material ID {material_id}")
             sucesso, msg = estoque_controller.deletar_material(material_id)
             
             if sucesso:
@@ -193,7 +199,7 @@ class MainView(ctk.CTk):
         
         except (IndexError, TypeError, ValueError) as e:
             print(f"View (Main) Erro: Não foi possível obter o ID do material. {e}")
-            messagebox.showwarning("Aviso", "Não foi possível identificar o material selecionado. Tente novamente.")
+            messagebox.showwarning("Aviso", "Não foi possível identificar o material selecionado.")
 
     def create_materials_table(self, parent_frame):
         """ Cria a tabela (Treeview) para exibir os materiais. """
@@ -260,43 +266,131 @@ class MainView(ctk.CTk):
 
     # --- Métodos do Módulo de OS ---
 
-    def _on_delete_os(self):
-        """ Chamado pelo botão "Deletar OS". """
+    def _get_selected_os_id(self):
+        """Função helper para pegar o ID da OS selecionada na tabela."""
+        selected_item = self.os_tree.focus()
+        if not selected_item:
+            messagebox.showwarning("Aviso", "Por favor, selecione uma Ordem de Serviço na tabela primeiro.")
+            return None
+        
         try:
-            selected_item = self.os_tree.focus()
-            if not selected_item:
-                messagebox.showwarning("Aviso", "Por favor, selecione uma Ordem de Serviço na tabela para deletar.")
-                return
-
             item_values = self.os_tree.item(selected_item, "values")
             os_id = int(item_values[0])
-            os_tipo = item_values[3] 
-            os_endereco = item_values[4]
+            return os_id
+        except (IndexError, TypeError, ValueError):
+            messagebox.showwarning("Aviso", "Não foi possível identificar a OS selecionada.")
+            return None
 
-            confirm = messagebox.askyesno(
-                "Confirmar Exclusão",
-                f"Tem certeza que deseja deletar a Ordem de Serviço:\n\n"
-                f"OS #: {os_id}\n"
-                f"Serviço: {os_tipo}\n"
-                f"Endereço: {os_endereco}\n\n"
-                f"Esta ação não pode ser desfeita."
-            )
+    def _on_delete_os(self):
+        """ Chamado pelo botão "Deletar OS". """
+        os_id = self._get_selected_os_id()
+        if not os_id: return
             
-            if not confirm:
-                return 
+        item_values = self.os_tree.item(self.os_tree.focus(), "values")
+        os_tipo = item_values[3] 
+        os_endereco = item_values[4]
 
-            print(f"View (Main): Solicitando ao controller para deletar OS ID {os_id}")
-            sucesso, msg = os_controller.deletar_os(os_id)
-            
-            if sucesso:
-                messagebox.showinfo("Sucesso", msg)
-                self.load_os() # Atualiza a tabela de OS
-            else:
-                messagebox.showerror("Erro ao Deletar", msg)
+        confirm = messagebox.askyesno(
+            "Confirmar Exclusão",
+            f"Tem certeza que deseja deletar a Ordem de Serviço:\n\n"
+            f"OS #: {os_id}\n"
+            f"Serviço: {os_tipo}\n"
+            f"Endereço: {os_endereco}\n\n"
+            f"Esta ação não pode ser desfeita."
+        )
         
-        except (IndexError, TypeError, ValueError) as e:
-            print(f"View (Main) Erro: Não foi possível obter o ID da OS. {e}")
-            messagebox.showwarning("Aviso", "Não foi possível identificar a OS selecionada. Tente novamente.")
+        if not confirm: return 
+
+        sucesso, msg = os_controller.deletar_os(os_id)
+        
+        if sucesso:
+            messagebox.showinfo("Sucesso", msg)
+            self.load_os()
+        else:
+            messagebox.showerror("Erro ao Deletar", msg)
+    
+    def _on_gerenciar_materiais(self):
+        """ Chamado pelo botão "Gerenciar Materiais da OS". """
+        os_id = self._get_selected_os_id()
+        if not os_id: return
+
+        print(f"View (Main): Abrindo gerenciador de materiais para OS #{os_id}")
+        
+        if self.gerenciar_materiais_window is None or not self.gerenciar_materiais_window.winfo_exists():
+            self.gerenciar_materiais_window = GerenciarMateriaisView(master=self, os_id=os_id)
+            self.gerenciar_materiais_window.bind("<Destroy>", self.on_materiais_closed)
+        else:
+            self.gerenciar_materiais_window.focus()
+
+    def on_materiais_closed(self, event):
+        """ Chamado quando a janela GerenciarMateriaisView é fechada. """
+        # Verifica se o evento veio da janela correta
+        if event.widget == self.gerenciar_materiais_window:
+            print("View (Main): Janela de materiais fechada. Atualizando listas...")
+            # Atualiza AMBAS as listas, pois o estoque mudou
+            self.load_materials()
+            self.load_os() # (Pode ter atualizações futuras, como custo total)
+
+    # --- NOVAS FUNÇÕES DE FLUXO DE ORÇAMENTO ---
+    
+    def _on_enviar_orcamento(self):
+        """ Chamado pelo botão "Enviar para Aprovação". """
+        os_id = self._get_selected_os_id()
+        if not os_id: return
+            
+        confirm = messagebox.askyesno(
+            "Confirmar Envio",
+            f"Deseja enviar o orçamento da OS #{os_id} para aprovação?\n\n"
+            f"Isso irá mudar o status para 'Aguardando Aprovação'."
+        )
+        if not confirm: return
+
+        sucesso, msg = os_controller.enviar_orcamento_para_aprovacao(os_id)
+        if sucesso:
+            messagebox.showinfo("Sucesso", msg)
+            self.load_os()
+        else:
+            messagebox.showerror("Erro ao Enviar", msg)
+
+    def _on_aprovar_orcamento(self):
+        """ Chamado pelo botão "Aprovar Orçamento". """
+        os_id = self._get_selected_os_id()
+        if not os_id: return
+
+        confirm = messagebox.askyesno(
+            "Confirmar Aprovação",
+            f"Deseja APROVAR o orçamento da OS #{os_id}?\n\n"
+            f"O status mudará para 'Em Andamento'."
+        )
+        if not confirm: return
+
+        sucesso, msg = os_controller.aprovar_orcamento_os(os_id)
+        if sucesso:
+            messagebox.showinfo("Sucesso", msg)
+            self.load_os()
+        else:
+            messagebox.showerror("Erro ao Aprovar", msg)
+
+    def _on_rejeitar_orcamento(self):
+        """ Chamado pelo botão "Rejeitar Orçamento". """
+        os_id = self._get_selected_os_id()
+        if not os_id: return
+
+        confirm = messagebox.askyesno(
+            "Confirmar Rejeição",
+            f"Deseja REJEITAR o orçamento da OS #{os_id}?\n\n"
+            f"O status voltará para 'Aberta'."
+        )
+        if not confirm: return
+
+        sucesso, msg = os_controller.rejeitar_orcamento_os(os_id)
+        if sucesso:
+            messagebox.showinfo("Sucesso", msg)
+            self.load_os()
+        else:
+            messagebox.showerror("Erro ao Rejeitar", msg)
+
+    # --- FIM DAS NOVAS FUNÇÕES ---
 
     def create_os_table(self, parent_frame):
         """ Cria a tabela (Treeview) para exibir as OS. """
@@ -359,20 +453,11 @@ class MainView(ctk.CTk):
             
     def _on_os_double_click(self, event):
         """ Chamado pelo duplo-clique na tabela de OS para editar. """
-        try:
-            selected_item = self.os_tree.focus() 
-            if not selected_item:
-                return 
-
-            item_values = self.os_tree.item(selected_item, "values")
-            os_id = int(item_values[0])
-            
-            print(f"View (Main): Duplo-clique detectado. Abrindo edição para OS #{os_id}")
-            self.abrir_cadastro_os(os_id=os_id)
-            
-        except (IndexError, TypeError, ValueError) as e:
-            print(f"View (Main) Erro: Não foi possível obter o ID da OS. {e}")
-            messagebox.showwarning("Aviso", "Não foi possível selecionar a OS. Tente novamente.")
+        os_id = self._get_selected_os_id()
+        if not os_id: return
+        
+        print(f"View (Main): Duplo-clique detectado. Abrindo edição para OS #{os_id}")
+        self.abrir_cadastro_os(os_id=os_id)
 
     def on_os_cadastro_closed(self, event):
         """ Chamado quando a janela de cadastro de OS fecha. """
@@ -380,7 +465,7 @@ class MainView(ctk.CTk):
             print("View: Janela de OS fechada. Atualizando lista...")
             self.load_os()
             
-    # --- Método de Permissões ---
+    # --- Método de Permissões (ATUALIZADO) ---
 
     def _apply_permissions(self):
         """ Ajusta a UI com base no perfil do usuário logado. """
@@ -394,6 +479,7 @@ class MainView(ctk.CTk):
             self.delete_material_button.configure(state="normal")
             self.delete_os_button.configure(state="normal")
             self.gerenciar_materiais_button.configure(state="normal")
+            self.enviar_orcamento_button.configure(state="normal")
 
             print("View (Main): Acesso de 'Empresa' concedido.")
             return
@@ -404,12 +490,18 @@ class MainView(ctk.CTk):
         
         if perfil == 'proprietario':
             print("View (Main): Acesso de 'Proprietário' concedido.")
+            # Desabilita botões de criação e gestão
             self.nova_os_button.configure(state="disabled")
             self.novo_material_button.configure(state="disabled")
             self.refresh_material_button.configure(state="disabled")
             
+            # Habilita os botões de APROVAR / REJEITAR
+            self.aprovar_orcamento_button.configure(state="normal")
+            self.rejeitar_orcamento_button.configure(state="normal")
+            
         elif perfil == 'cliente':
             print("View (Main): Acesso de 'Cliente' concedido.")
+            # Desabilita botões de criação e gestão
             self.nova_os_button.configure(state="disabled")
             self.novo_material_button.configure(state="disabled")
             self.refresh_material_button.configure(state="disabled")
@@ -426,47 +518,3 @@ class MainView(ctk.CTk):
             self.tab_view.delete("Estoque")
         except Exception:
             pass # Ignora se a aba já foi deletada
-
-    # --- MÉTODO NOVO ---
-    def _on_gerenciar_materiais(self):
-        """
-        Chamado pelo botão "Gerenciar Materiais da OS".
-        Abre a janela de gerenciamento para a OS selecionada.
-        """
-        try:
-            # 1. Pega a OS selecionada na tabela
-            selected_item = self.os_tree.focus()
-            if not selected_item:
-                messagebox.showwarning("Aviso", "Por favor, selecione uma Ordem de Serviço na tabela primeiro.")
-                return
-
-            # 2. Pega o ID da OS
-            item_values = self.os_tree.item(selected_item, "values")
-            os_id = int(item_values[0])
-            
-            print(f"View (Main): Abrindo gerenciador de materiais para OS #{os_id}")
-
-            # 3. Abre a nova janela
-            if self.gerenciar_materiais_window is None or not self.gerenciar_materiais_window.winfo_exists():
-                self.gerenciar_materiais_window = GerenciarMateriaisView(master=self, os_id=os_id)
-                # BIND: Quando a janela fechar, atualize as listas!
-                self.gerenciar_materiais_window.bind("<Destroy>", self.on_materiais_closed)
-            else:
-                self.gerenciar_materiais_window.focus()
-        
-        except (IndexError, TypeError, ValueError) as e:
-            print(f"View (Main) Erro: Não foi possível obter o ID da OS. {e}")
-            messagebox.showwarning("Aviso", "Não foi possível identificar a OS selecionada. Tente novamente.")
-
-    # --- MÉTODO NOVO ---
-    def on_materiais_closed(self, event):
-        """
-        Chamado quando a janela GerenciarMateriaisView é fechada.
-        Atualiza as listas de OS e Estoque.
-        """
-        # Verifica se o evento veio da janela correta
-        if event.widget == self.gerenciar_materiais_window:
-            print("View (Main): Janela de materiais fechada. Atualizando listas...")
-            # Atualiza AMBAS as listas, pois o estoque mudou
-            self.load_materials()
-            self.load_os() # (Pode ter atualizações futuras, como custo total)
