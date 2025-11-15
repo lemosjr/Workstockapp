@@ -23,7 +23,7 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
             
         self.os_id = os_id
         self.title(f"Gerenciar Materiais da OS #{self.os_id}")
-        self.geometry("900x500")
+        self.geometry("1000x800")
         
         self.transient(master)
         self.grab_set()
@@ -37,6 +37,7 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
         # Carrega os dados iniciais
         self._load_inventory_list() # Carrega o ComboBox de estoque
         self._load_linked_materials() # Carrega a tabela de materiais da OS
+        self._load_orcamento_data()
 
     def _setup_styles(self):
         """ Configura o estilo do Treeview para o tema escuro. """
@@ -63,10 +64,10 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
         )
         self.remove_button.pack(pady=10)
         
-        # --- Frame Direito (Adicionar do Estoque) ---
+        # --- Frame Direito (Adicionar + ORÇAMENTO) ---
         right_frame = ctk.CTkFrame(self, width=350)
         right_frame.pack(side="right", fill="y", padx=10, pady=10)
-        right_frame.pack_propagate(False) # Impede que o frame encolha
+        right_frame.pack_propagate(False) 
 
         ctk.CTkLabel(right_frame, text="Adicionar do Estoque", font=("Arial", 16)).pack(pady=5)
         
@@ -82,7 +83,34 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
             right_frame, text="Adicionar Material à OS", 
             command=self._on_add_material
         )
-        self.add_button.pack(pady=20)
+        self.add_button.pack(pady=10)
+
+        # --- SEPARAÇÃO E NOVA SEÇÃO DE ORÇAMENTO ---
+        ctk.CTkFrame(right_frame, height=2, fg_color="gray").pack(fill="x", padx=10, pady=(15, 10))
+        
+        ctk.CTkLabel(right_frame, text="Resumo do Orçamento", font=("Arial", 16)).pack(pady=5)
+        
+        # Custo de Materiais (Calculado)
+        ctk.CTkLabel(right_frame, text="Custo Materiais (R$):").pack(anchor="w", padx=10)
+        self.custo_materiais_label = ctk.CTkLabel(right_frame, text="R$ 0.00", font=("Arial", 14, "bold"))
+        self.custo_materiais_label.pack(anchor="w", padx=10, pady=(0, 10))
+        
+        # Custo de Mão de Obra (Editável)
+        ctk.CTkLabel(right_frame, text="Mão de Obra (R$):").pack(anchor="w", padx=10)
+        self.mao_de_obra_entry = ctk.CTkEntry(right_frame)
+        self.mao_de_obra_entry.pack(fill="x", padx=10, pady=(0, 10))
+        
+        # Custo Total (Calculado)
+        ctk.CTkLabel(right_frame, text="CUSTO TOTAL (R$):").pack(anchor="w", padx=10)
+        self.custo_total_label = ctk.CTkLabel(right_frame, text="R$ 0.00", font=("Arial", 16, "bold"), text_color="#4CAF50") # Cor verde
+        self.custo_total_label.pack(anchor="w", padx=10, pady=(0, 20))
+        
+        # Botão Salvar Orçamento
+        self.save_orcamento_button = ctk.CTkButton(
+            right_frame, text="Salvar Orçamento",
+            command=self._on_save_orcamento
+        )
+        self.save_orcamento_button.pack(pady=20, side="bottom")
 
     def create_linked_table(self, parent_frame):
         """ Cria a tabela (Treeview) para exibir os materiais vinculados. """
@@ -105,6 +133,52 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
         self.linked_tree.column("custo_unit", width=80, anchor="e")
         
         self.linked_tree.pack(fill="both", expand=True, padx=5, pady=5)
+
+    def _load_orcamento_data(self):
+        """
+        Busca os dados de orçamento (salvos) e atualiza os campos.
+        """
+        print(f"View (Mat): Carregando dados do orçamento da OS {self.os_id}")
+        sucesso, data = os_controller.get_orcamento_os(self.os_id)
+        
+        if sucesso:
+            # Pega os valores do banco
+            custo_materiais = data.get('materiais', 0.0)
+            custo_mo = data.get('mao_de_obra', 0.0)
+            custo_total = data.get('total', 0.0)
+            
+            # Atualiza os Labels
+            self.custo_materiais_label.configure(text=f"R$ {custo_materiais:.2f}")
+            self.custo_total_label.configure(text=f"R$ {custo_total:.2f}")
+            
+            # Atualiza o Entry (só limpamos e inserimos)
+            self.mao_de_obra_entry.delete(0, 'end')
+            self.mao_de_obra_entry.insert(0, f"{custo_mo:.2f}")
+            
+        else:
+            messagebox.showerror("Erro", "Não foi possível carregar os dados do orçamento.")
+
+    def _on_save_orcamento(self):
+        """
+        Chamado pelo botão "Salvar Orçamento".
+        Pega a Mão de Obra e manda o Controller recalcular tudo.
+        """
+        mao_de_obra_str = self.mao_de_obra_entry.get()
+        
+        print(f"View (Mat): Solicitando recalcular e salvar orçamento da OS {self.os_id} com M.O. = {mao_de_obra_str}")
+        
+        # O Controller fará todo o trabalho de cálculo
+        sucesso, msg = os_controller.recalcular_e_salvar_orcamento_os(
+            self.os_id,
+            mao_de_obra_str
+        )
+        
+        if sucesso:
+            messagebox.showinfo("Sucesso", msg)
+            # Recarrega os dados para mostrar os valores atualizados
+            self._load_orcamento_data()
+        else:
+            messagebox.showerror("Erro ao Salvar", msg)
 
     def _load_inventory_list(self):
         """ Busca o estoque completo para popular o ComboBox. """
@@ -180,6 +254,7 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
             # 5. Recarregar TUDO para mostrar as mudanças
             self._load_inventory_list() # Recarrega o ComboBox (para estoque atualizado)
             self._load_linked_materials() # Recarrega a Tabela (para item novo)
+            self._load_orcamento_data() # Recarrega o orçamento (custo atualizado)
             self.quantidade_entry.delete(0, 'end') # Limpa o campo
         else:
             messagebox.showerror("Erro ao Adicionar", msg)
@@ -221,5 +296,6 @@ class GerenciarMateriaisView(ctk.CTkToplevel):
             # 5. Recarregar TUDO
             self._load_inventory_list()
             self._load_linked_materials()
+            self._load_orcamento_data()
         else:
             messagebox.showerror("Erro ao Remover", msg)

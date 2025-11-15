@@ -1,5 +1,6 @@
 from app.models import os_model
 from app.models import estoque_model
+import decimal
 import datetime
 
 """
@@ -280,3 +281,83 @@ def desvincular_material_os(os_material_id, material_id, quantidade_removida):
     else:
         print(f"Controller CRÍTICO: Material ID {material_id} foi removido da OS, MAS falhou ao estornar o estoque.")
         return (False, "Material removido da OS, mas falhou ao atualizar o estoque.")
+    
+def get_orcamento_os(os_id):
+    """
+    Busca os dados de orçamento atuais de uma OS.
+    """
+    if not os_id:
+        return (False, "ID da OS inválido.")
+        
+    print(f"Controller: Buscando dados de orçamento da OS #{os_id}.")
+    try:
+        # Reutilizamos a função que já busca tudo
+        os_data = os_model.get_os_by_id(os_id)
+        if os_data:
+            orcamento_data = {
+                "materiais": os_data['orcamento_materiais'],
+                "mao_de_obra": os_data['orcamento_mao_de_obra'],
+                "total": os_data['orcamento_total']
+            }
+            return (True, orcamento_data)
+        else:
+            return (False, "OS não encontrada.")
+            
+    except Exception as e:
+        print(f"Controller Error: Erro ao buscar orçamento da OS: {e}")
+        return (False, "Erro ao buscar dados.")
+
+
+def recalcular_e_salvar_orcamento_os(os_id, custo_mao_de_obra_str):
+    """
+    Processo principal do orçamento:
+    1. Calcula o custo total dos materiais vinculados.
+    2. Valida o custo de mão de obra inserido.
+    3. Soma tudo e salva no banco de dados.
+    """
+    if not os_id:
+        return (False, "ID da OS inválido.")
+        
+    # --- 1. Calcular Custo dos Materiais ---
+    try:
+        # Busca a lista de materiais que JÁ ESTÃO na OS
+        # (da tabela os_materiais)
+        materiais_vinculados = os_model.get_materiais_for_os(os_id)
+        
+        total_custo_materiais = decimal.Decimal(0.0)
+        
+        for item in materiais_vinculados:
+            # Soma (Preço salvo na OS * Quantidade)
+            total_custo_materiais += (item['preco_custo_na_data'] * item['quantidade'])
+            
+        print(f"Controller: Custo total de materiais calculado: R$ {total_custo_materiais}")
+        
+    except Exception as e:
+        print(f"Controller Error: Erro ao calcular custo de materiais: {e}")
+        return (False, "Erro ao calcular o custo dos materiais.")
+
+    # --- 2. Validar Custo de Mão de Obra ---
+    try:
+        custo_mao_de_obra = decimal.Decimal(custo_mao_de_obra_str if custo_mao_de_obra_str else 0.0)
+        if custo_mao_de_obra < 0:
+            return (False, "Custo de Mão de Obra não pode ser negativo.")
+    except (decimal.InvalidOperation, ValueError):
+        return (False, "Valor de Mão de Obra inválido.")
+        
+    # --- 3. Calcular Total e Salvar no Model ---
+    
+    custo_total_orcamento = total_custo_materiais + custo_mao_de_obra
+    
+    print(f"Controller: Salvando orçamento... Mat: {total_custo_materiais}, M.O: {custo_mao_de_obra}, Total: {custo_total_orcamento}")
+    
+    sucesso_save = os_model.update_os_orcamento(
+        os_id=os_id,
+        custo_materiais=total_custo_materiais,
+        custo_mao_de_obra=custo_mao_de_obra,
+        custo_total=custo_total_orcamento
+    )
+    
+    if sucesso_save:
+        return (True, "Orçamento recalculado e salvo com sucesso!")
+    else:
+        return (False, "Erro ao salvar o orçamento no banco de dados.")

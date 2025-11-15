@@ -328,3 +328,128 @@ def update_material_quantidade_in_os(os_material_id, nova_quantidade):
             cursor.close()
         if conn:
             release_connection(conn)
+
+def update_os_orcamento(os_id, custo_materiais, custo_mao_de_obra, custo_total):
+    """
+    Atualiza os campos de orçamento de uma OS específica.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = """
+        UPDATE ordens_servico SET
+            orcamento_materiais = %s,
+            orcamento_mao_de_obra = %s,
+            orcamento_total = %s,
+            data_atualizacao = CURRENT_TIMESTAMP
+        WHERE
+            id = %s;
+        """
+        
+        cursor.execute(query, (custo_materiais, custo_mao_de_obra, custo_total, os_id))
+        conn.commit()
+        
+        if cursor.rowcount > 0:
+            print(f"Model (OS): Orçamento da OS ID {os_id} atualizado.")
+            return True
+        else:
+            print(f"Model (OS): OS ID {os_id} não encontrada para atualizar orçamento.")
+            return False
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS): Erro ao atualizar orçamento: {error}")
+        if conn:
+            conn.rollback()
+        return False
+        
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            release_connection(conn)
+
+def update_os_status(os_id, novo_status):
+    """
+    Função genérica para atualizar o STATUS de uma OS.
+    Usada para Enviar, Aprovar, Rejeitar, etc.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = "UPDATE ordens_servico SET status = %s WHERE id = %s;"
+        
+        cursor.execute(query, (novo_status, os_id))
+        conn.commit()
+        return cursor.rowcount > 0
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS): Erro ao atualizar status: {error}")
+        if conn: conn.rollback()
+        return False
+    finally:
+        if cursor: cursor.close()
+        if conn: release_connection(conn)
+
+def set_os_orcamento_enviado(os_id):
+    """
+    Define o status como 'aguardando aprovação' e salva a data de envio.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = """
+        UPDATE ordens_servico SET 
+            status = 'aguardando aprovação',
+            data_orcamento_enviado = CURRENT_TIMESTAMP
+        WHERE id = %s;
+        """
+        
+        cursor.execute(query, (os_id,))
+        conn.commit()
+        return cursor.rowcount > 0
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS): Erro ao enviar orçamento: {error}")
+        if conn: conn.rollback()
+        return False
+    finally:
+        if cursor: cursor.close()
+        if conn: release_connection(conn)
+
+def set_os_orcamento_aprovado(os_id, novo_status):
+    """
+    Define o status (ex: 'em andamento') e salva a data de aprovação.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        query = """
+        UPDATE ordens_servico SET 
+            status = %s,
+            data_aprovacao = CURRENT_TIMESTAMP
+        WHERE id = %s;
+        """
+        
+        cursor.execute(query, (novo_status, os_id))
+        conn.commit()
+        return cursor.rowcount > 0
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS): Erro ao aprovar orçamento: {error}")
+        if conn: conn.rollback()
+        return False
+    finally:
+        if cursor: cursor.close()
+        if conn: release_connection(conn)
