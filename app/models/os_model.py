@@ -16,9 +16,7 @@ Responsabilidade:
 def create_os(data):
     """
     Cria uma nova Ordem de Serviço no banco de dados.
-    'data' é um dicionário contendo as chaves:
-    'tipo_servico', 'endereco', 'descricao', 'prioridade', 
-    'status', 'data_conclusao_prevista'
+    Atualizado para incluir cliente_id.
     """
     conn = None
     cursor = None
@@ -26,16 +24,21 @@ def create_os(data):
         conn = get_connection()
         cursor = conn.cursor()
         
+        # Adiciona cliente_id na query
         query = """
         INSERT INTO ordens_servico (
             tipo_servico, endereco, descricao, prioridade, 
-            status, data_conclusao_prevista
+            status, data_conclusao_prevista, cliente_id
         ) VALUES (
             %(tipo_servico)s, %(endereco)s, %(descricao)s, %(prioridade)s,
-            %(status)s, %(data_conclusao_prevista)s
+            %(status)s, %(data_conclusao_prevista)s, %(cliente_id)s
         ) RETURNING id;
         """
         
+        # Garante que cliente_id exista no dicionário (pode ser None se for criado pela Empresa)
+        if 'cliente_id' not in data:
+            data['cliente_id'] = None
+            
         cursor.execute(query, data)
         
         new_id = cursor.fetchone()[0]

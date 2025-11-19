@@ -31,6 +31,8 @@ def _validar_e_formatar_dados_os(data):
         return (False, "O Endereço do imóvel é obrigatório.")
 
     # 2. Tratamento de dados opcionais e defaults
+    data['cliente_id'] = data.get('cliente_id')
+
     data['descricao'] = data.get('descricao', '')
     
     data['prioridade'] = data.get('prioridade', 'baixa').lower()

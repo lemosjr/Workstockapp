@@ -15,6 +15,8 @@ class SolicitacaoView(ctk.CTkToplevel):
     def __init__(self, master=None):
         super().__init__(master)
         
+        self.user_id = user_id
+
         self.title("Registrar Nova Solicitação de Reparo")
         self.geometry("450x450")
         
@@ -62,7 +64,8 @@ class SolicitacaoView(ctk.CTkToplevel):
             # --- Dados Padrão (Ocultos do Cliente) ---
             "prioridade": "baixa", # Solicitações de cliente entram como 'baixa'
             "status": "aberta", # Sempre 'aberta'
-            "data_conclusao_prevista": None # A empresa define isso
+            "data_conclusao_prevista": None, # A empresa define isso
+            "cliente_id": self.user_id
         }
         
         print(f"View (Solicitacao): Coletou dados do formulário: {data}")
