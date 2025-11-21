@@ -469,3 +469,52 @@ def set_os_orcamento_aprovado(os_id, novo_status_aprovado):
     finally:
         if cursor: cursor.close()
         if conn: release_connection(conn)
+
+def get_os_stats():
+    """
+    Retorna estatísticas gerais das Ordens de Serviço.
+    Ex: Contagem por status, valor total, etc.
+    """
+    conn = None
+    cursor = None
+    stats = {
+        "total_abertas": 0,
+        "total_em_andamento": 0,
+        "total_pendentes": 0, # Aguardando aprovação
+        "valor_em_projetos": 0.00 # Soma dos orçamentos aprovados/em andamento
+    }
+    
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # 1. Contagem por Status
+        query_status = "SELECT status, COUNT(*) FROM ordens_servico GROUP BY status;"
+        cursor.execute(query_status)
+        rows = cursor.fetchall()
+        
+        for status, count in rows:
+            if status == 'aberta':
+                stats["total_abertas"] = count
+            elif status == 'em andamento':
+                stats["total_em_andamento"] = count
+            elif status == 'aguardando aprovação':
+                stats["total_pendentes"] = count
+        
+        # 2. Soma Financeira (Apenas de projetos ativos)
+        query_valor = """
+        SELECT SUM(orcamento_total) FROM ordens_servico 
+        WHERE status IN ('em andamento', 'concluída');
+        """
+        cursor.execute(query_valor)
+        resultado = cursor.fetchone()[0]
+        stats["valor_em_projetos"] = resultado if resultado else 0.00
+        
+        return stats
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (OS Stats): {error}")
+        return stats # Retorna zerado em caso de erro
+    finally:
+        if cursor: cursor.close()
+        if conn: release_connection(conn)

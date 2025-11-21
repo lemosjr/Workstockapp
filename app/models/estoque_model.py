@@ -240,3 +240,27 @@ def update_material_estoque(material_id, nova_quantidade):
             cursor.close()
         if conn:
             release_connection(conn)
+
+def get_estoque_baixo_count():
+    """
+    Retorna a quantidade de itens que estão abaixo do estoque mínimo.
+    """
+    conn = None
+    cursor = None
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Conta quantos materiais têm estoque_atual < estoque_minimo
+        query = "SELECT COUNT(*) FROM materiais WHERE estoque_atual < estoque_minimo;"
+        
+        cursor.execute(query)
+        count = cursor.fetchone()[0]
+        return count
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(f"Model Error (Estoque Stats): {error}")
+        return 0
+    finally:
+        if cursor: cursor.close()
+        if conn: release_connection(conn)
