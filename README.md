@@ -1,9 +1,3 @@
-Com certeza\! Um `README.md` profissional é a "vitrine" do seu projeto. Ele explica o que é, como funciona e como instalar.
-
-Aqui está o arquivo completo, formatado em Markdown, pronto para você copiar e colar no seu GitHub.
-
------
-
 ### 1\. O Arquivo `README.md`
 
 ````markdown
