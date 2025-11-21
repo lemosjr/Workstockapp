@@ -1,80 +1,82 @@
 import customtkinter as ctk
 from app.controllers import estoque_controller
-from tkinter import messagebox # Usaremos para exibir pop-ups de sucesso/erro
+from tkinter import messagebox
 
-"""
-Camada View (Visão) para Cadastro de Estoque.
-
-Responsabilidade:
-- Exibir a interface gráfica (widgets) para o usuário.
-- Capturar a entrada do usuário (cliques, digitação).
-- Chamar o Controller quando uma ação de negócio for necessária (ex: salvar).
-- Exibir retornos (sucesso, erro) do Controller para o usuário.
-- NÃO deve conter lógica de negócio ou SQL.
-"""
+# --- PALETA DE CORES ---
+COLOR_PRIMARY = "#264653"
+COLOR_ACCENT = "#F2B263"
+COLOR_ACCENT_HOVER = "#D9A059"
+COLOR_TEXT_DARK = "#264653"
 
 class EstoqueView(ctk.CTkToplevel):
     
     def __init__(self, master=None):
         super().__init__(master)
         self.title("Cadastrar Novo Material")
-        self.geometry("400x500")
-        
-        # Faz com que esta janela fique "na frente" da principal
+        self.geometry("450x600")
         self.transient(master)
         self.grab_set()
         
         self.create_widgets()
 
     def create_widgets(self):
-        # Frame principal para organizar os campos
-        frame = ctk.CTkFrame(self)
-        frame.pack(padx=20, pady=20, fill="both", expand=True)
-
-        # --- Campos do Formulário ---
-        # Baseado nos requisitos
+        # --- Cabeçalho ---
+        header_frame = ctk.CTkFrame(self, height=60, corner_radius=0, fg_color=COLOR_PRIMARY)
+        header_frame.pack(fill="x", side="top")
         
-        ctk.CTkLabel(frame, text="Nome do Material:*").pack(anchor="w")
-        self.nome_entry = ctk.CTkEntry(frame, width=300)
-        self.nome_entry.pack(fill="x", pady=(0, 10))
+        ctk.CTkLabel(header_frame, text="Novo Material", 
+                     font=("Roboto Medium", 20), text_color="white").pack(pady=15)
 
-        ctk.CTkLabel(frame, text="SKU:*").pack(anchor="w")
-        self.sku_entry = ctk.CTkEntry(frame, width=300)
-        self.sku_entry.pack(fill="x", pady=(0, 10))
+        # --- Corpo (Scrollable) ---
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-        ctk.CTkLabel(frame, text="Unidade de Medida:").pack(anchor="w")
-        self.unidade_entry = ctk.CTkEntry(frame, width=300)
-        self.unidade_entry.pack(fill="x", pady=(0, 10))
-
-        ctk.CTkLabel(frame, text="Preço de Custo (Ex: 12.50):").pack(anchor="w")
-        self.preco_entry = ctk.CTkEntry(frame, width=300)
-        self.preco_entry.pack(fill="x", pady=(0, 10))
+        self._add_field("Nome do Material:*", "nome_entry")
+        self._add_field("SKU (Código):*", "sku_entry")
+        self._add_field("Unidade de Medida (ex: un, kg):", "unidade_entry")
         
-        ctk.CTkLabel(frame, text="Estoque Atual:").pack(anchor="w")
-        self.estoque_entry = ctk.CTkEntry(frame, width=300)
-        self.estoque_entry.pack(fill="x", pady=(0, 10))
+        # Preço e Estoque lado a lado
+        row1 = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
+        row1.pack(fill="x", pady=5)
+        
+        self._add_field_grid(row1, "Preço Custo (R$):", "preco_entry", 0)
+        self._add_field_grid(row1, "Estoque Inicial:", "estoque_entry", 1)
 
-        ctk.CTkLabel(frame, text="Estoque Mínimo:").pack(anchor="w")
-        self.estoque_min_entry = ctk.CTkEntry(frame, width=300)
-        self.estoque_min_entry.pack(fill="x", pady=(0, 10))
-
-        ctk.CTkLabel(frame, text="Fornecedor:").pack(anchor="w")
-        self.fornecedor_entry = ctk.CTkEntry(frame, width=300)
-        self.fornecedor_entry.pack(fill="x", pady=(0, 10))
-
-        ctk.CTkLabel(frame, text="Localização:").pack(anchor="w")
-        self.localizacao_entry = ctk.CTkEntry(frame, width=300)
-        self.localizacao_entry.pack(fill="x", pady=(0, 10))
+        self._add_field("Estoque Mínimo (Alerta):", "estoque_min_entry")
+        self._add_field("Fornecedor Preferencial:", "fornecedor_entry")
+        self._add_field("Localização no Estoque:", "localizacao_entry")
 
         # --- Botão Salvar ---
-        save_button = ctk.CTkButton(frame, text="Salvar Material", command=self.salvar)
-        save_button.pack(pady=20, side="bottom")
+        self.save_button = ctk.CTkButton(
+            self, 
+            text="CADASTRAR MATERIAL",
+            height=45,
+            font=("Roboto Medium", 14),
+            fg_color=COLOR_ACCENT, 
+            hover_color=COLOR_ACCENT_HOVER, 
+            text_color=COLOR_TEXT_DARK,
+            command=self.salvar
+        )
+        self.save_button.pack(fill="x", padx=20, pady=20, side="bottom")
+
+    def _add_field(self, label_text, attr_name):
+        ctk.CTkLabel(self.scroll_frame, text=label_text, 
+                     font=("Roboto", 12, "bold"), text_color="gray").pack(anchor="w", pady=(5, 2))
+        entry = ctk.CTkEntry(self.scroll_frame, height=35)
+        entry.pack(fill="x", pady=(0, 10))
+        setattr(self, attr_name, entry) # Cria self.nome_entry, etc.
+
+    def _add_field_grid(self, parent, label_text, attr_name, col):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.pack(side="left", fill="x", expand=True, padx=(0 if col==0 else 10, 0))
+        
+        ctk.CTkLabel(frame, text=label_text, 
+                     font=("Roboto", 12, "bold"), text_color="gray").pack(anchor="w", pady=(0, 2))
+        entry = ctk.CTkEntry(frame, height=35)
+        entry.pack(fill="x")
+        setattr(self, attr_name, entry)
 
     def salvar(self):
-        """
-        Coleta os dados da interface e envia para o Controller.
-        """
-        # 1. Coletar dados da View
         data = {
             "nome": self.nome_entry.get(),
             "sku": self.sku_entry.get(),
@@ -86,15 +88,10 @@ class EstoqueView(ctk.CTkToplevel):
             "localizacao": self.localizacao_entry.get()
         }
         
-        print(f"View: Coletou dados do formulário: {data}")
-
-        # 2. Enviar dados para o Controller
-        # A View NÃO SABE o que acontece. Ela só chama o Controller.
         sucesso, mensagem = estoque_controller.salvar_material(data)
         
-        # 3. Exibir resposta do Controller para o usuário
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
-            self.destroy() # Fecha a janela de cadastro
+            self.destroy()
         else:
             messagebox.showerror("Erro", mensagem)

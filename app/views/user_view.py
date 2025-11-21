@@ -1,15 +1,12 @@
 import customtkinter as ctk
-from app.controllers import user_controller # O controller de usuário
+from app.controllers import user_controller
 from tkinter import messagebox
 
-"""
-Camada View (Visão) para Cadastro de Usuário.
-
-Responsabilidade:
-- Exibir a interface gráfica (widgets) para o usuário (admin).
-- Capturar a entrada (dados do novo usuário).
-- Chamar o User_Controller quando a ação de salvar for necessária.
-"""
+# --- PALETA DE CORES ---
+COLOR_PRIMARY = "#264653"
+COLOR_ACCENT = "#F2B263"
+COLOR_ACCENT_HOVER = "#D9A059"
+COLOR_TEXT_DARK = "#264653"
 
 class UserView(ctk.CTkToplevel):
     
@@ -18,55 +15,62 @@ class UserView(ctk.CTkToplevel):
         
         self.title("Cadastrar Novo Usuário")
         self.geometry("400x600")
+        self.transient(master)
+        self.grab_set()
         
-        self.transient(master) # Mantém esta janela na frente
-        self.grab_set() # Torna a janela "modal"
-        
-        # Lista de perfis (do ENUM do DB / Controller)
         self.profile_list = ['empresa', 'proprietario', 'cliente']
-        
         self.create_widgets()
 
     def create_widgets(self):
-        frame = ctk.CTkFrame(self)
-        frame.pack(padx=20, pady=20, fill="both", expand=True)
-
-        ctk.CTkLabel(frame, text="Novo Usuário", 
-                     font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(0, 15))
-
-        # --- Campos do Formulário ---
+        # --- Cabeçalho ---
+        header_frame = ctk.CTkFrame(self, height=60, corner_radius=0, fg_color=COLOR_PRIMARY)
+        header_frame.pack(fill="x", side="top")
         
-        ctk.CTkLabel(frame, text="Nome Completo:*").pack(anchor="w")
-        self.nome_entry = ctk.CTkEntry(frame, width=300)
-        self.nome_entry.pack(fill="x", pady=(0, 10))
+        ctk.CTkLabel(header_frame, text="Novo Usuário", 
+                     font=("Roboto Medium", 20), text_color="white").pack(pady=15)
 
-        ctk.CTkLabel(frame, text="E-mail:*").pack(anchor="w")
-        self.email_entry = ctk.CTkEntry(frame, width=300)
-        self.email_entry.pack(fill="x", pady=(0, 10))
+        # --- Corpo ---
+        body_frame = ctk.CTkFrame(self, fg_color="transparent")
+        body_frame.pack(fill="both", expand=True, padx=30, pady=30)
+
+        self._add_label(body_frame, "Nome Completo:*")
+        self.nome_entry = ctk.CTkEntry(body_frame, height=35)
+        self.nome_entry.pack(fill="x", pady=(0, 15))
+
+        self._add_label(body_frame, "E-mail:*")
+        self.email_entry = ctk.CTkEntry(body_frame, height=35)
+        self.email_entry.pack(fill="x", pady=(0, 15))
         
-        ctk.CTkLabel(frame, text="Perfil do Usuário:*").pack(anchor="w")
-        self.perfil_combo = ctk.CTkComboBox(frame, width=300, values=self.profile_list)
-        self.perfil_combo.set('cliente') # Define 'cliente' como padrão
+        self._add_label(body_frame, "Perfil do Usuário:*")
+        self.perfil_combo = ctk.CTkComboBox(body_frame, values=self.profile_list, height=35, button_color=COLOR_PRIMARY)
+        self.perfil_combo.set('cliente')
         self.perfil_combo.pack(fill="x", pady=(0, 15))
 
-        ctk.CTkLabel(frame, text="Senha (mín. 6 caracteres):*").pack(anchor="w")
-        self.senha_entry = ctk.CTkEntry(frame, width=300, show="*")
-        self.senha_entry.pack(fill="x", pady=(0, 10))
+        self._add_label(body_frame, "Senha (mín. 6 caracteres):*")
+        self.senha_entry = ctk.CTkEntry(body_frame, height=35, show="*")
+        self.senha_entry.pack(fill="x", pady=(0, 15))
         
-        ctk.CTkLabel(frame, text="Confirmar Senha:*").pack(anchor="w")
-        self.confirma_senha_entry = ctk.CTkEntry(frame, width=300, show="*")
-        self.confirma_senha_entry.pack(fill="x", pady=(0, 10))
+        self._add_label(body_frame, "Confirmar Senha:*")
+        self.confirma_senha_entry = ctk.CTkEntry(body_frame, height=35, show="*")
+        self.confirma_senha_entry.pack(fill="x", pady=(0, 15))
 
         # --- Botão Salvar ---
-        save_button = ctk.CTkButton(frame, text="Salvar Novo Usuário", 
-                                    command=self.salvar)
-        save_button.pack(pady=20, side="bottom")
+        save_button = ctk.CTkButton(
+            body_frame, 
+            text="CADASTRAR", 
+            height=45,
+            font=("Roboto Medium", 14),
+            fg_color=COLOR_ACCENT, 
+            hover_color=COLOR_ACCENT_HOVER, 
+            text_color=COLOR_TEXT_DARK,
+            command=self.salvar
+        )
+        save_button.pack(fill="x", pady=(20, 0))
+
+    def _add_label(self, parent, text):
+        ctk.CTkLabel(parent, text=text, font=("Roboto", 12, "bold"), text_color="gray").pack(anchor="w", pady=(0, 2))
 
     def salvar(self):
-        """
-        Coleta os dados da interface e envia para o User_Controller.
-        """
-        # 1. Coletar dados da View
         data = {
             "nome": self.nome_entry.get(),
             "email": self.email_entry.get(),
@@ -74,16 +78,9 @@ class UserView(ctk.CTkToplevel):
             "confirma_senha": self.confirma_senha_entry.get(),
             "perfil": self.perfil_combo.get()
         }
-        
-        print(f"View (User): Coletou dados do formulário para: {data.get('email')}")
-
-        # 2. Enviar dados para o Controller
-        # A View não valida, apenas envia. O Controller faz a mágica.
         sucesso, mensagem = user_controller.register_user(data)
-        
-        # 3. Exibir resposta
         if sucesso:
             messagebox.showinfo("Sucesso", mensagem)
-            self.destroy() # Fecha a janela de cadastro
+            self.destroy()
         else:
-            messagebox.showerror("Erro de Validação", mensagem)
+            messagebox.showerror("Erro", mensagem)
