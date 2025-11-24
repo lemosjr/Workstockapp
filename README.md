@@ -61,7 +61,7 @@ workstockapp/
 
 -----
 
-## 🚀 Como Executar o Projeto
+## Como Executar o Projeto
 
 ### Pré-requisitos
 
@@ -131,7 +131,7 @@ workstockapp/
 
 -----
 
-## 🧪 Usuários de Teste (Padrão)
+## Usuários de Teste (Padrão)
 
 Após rodar o script de criação, use estas credenciais para testar os diferentes perfis:
 
@@ -143,7 +143,7 @@ Após rodar o script de criação, use estas credenciais para testar os diferent
 
 -----
 
-## 🗺️ Roadmap (Próximos Passos)
+## Roadmap (Próximos Passos)
 
 Este projeto está em evolução constante para se tornar um produto comercial viável.
 
@@ -151,9 +151,9 @@ Este projeto está em evolução constante para se tornar um produto comercial v
   - [x] CRUD Estoque e OS
   - [x] Sistema de Login e Permissões
   - [x] Fluxo de Aprovação de Orçamento
-  - [ ] **Migração para ORM (SQLAlchemy)** 🚧
-  - [ ] **Criação de API REST (FastAPI)** 🚧
-  - [ ] **Interface Web/Mobile para Clientes** 📅
+  - [ ] **Migração para ORM (SQLAlchemy)** 
+  - [ ] **Criação de API REST (FastAPI)** 
+  - [ ] **Interface Web/Mobile para Clientes**
 
 -----
 
