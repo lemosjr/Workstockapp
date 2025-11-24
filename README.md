@@ -1,4 +1,4 @@
-# 🏗️ WorkStock
+# WorkStock
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14%2B-336791)
@@ -9,30 +9,30 @@
 
 ---
 
-## 📋 Funcionalidades Principais
+## Funcionalidades Principais
 
-### 🏢 Módulo Empresa (Administrador)
+### Módulo Empresa (Administrador)
 - **Gestão de OS:** Criação, edição e acompanhamento de Ordens de Serviço.
 - **Controle de Estoque:** Cadastro de materiais (SKU, preços, fornecedores) e baixa automática ao vincular materiais a uma OS.
 - **Orçamentação:** Cálculo automático de custos de material + inserção de mão de obra.
 - **Dashboard:** Visão geral com métricas de faturamento, OSs ativas e alertas de estoque baixo.
 - **Gestão de Usuários:** Cadastro de novos perfis (Proprietários, Clientes, Colaboradores).
 
-### 🏠 Módulo Proprietário
+### Módulo Proprietário
 - **Aprovação de Orçamentos:** Interface para aprovar ou rejeitar orçamentos enviados pela empresa.
 - **Acompanhamento:** Visualização do status das reformas em seus imóveis.
 - **Histórico:** Acesso ao chat e detalhes da obra.
 
-### 👤 Módulo Cliente (Inquilino)
+### Módulo Cliente (Inquilino)
 - **Solicitações:** Abertura rápida de chamados para reparos.
 - **Acompanhamento:** Visualização do status de suas solicitações.
 
-### 💬 Comunicação
+### Comunicação
 - **Chat Integrado:** Histórico de mensagens vinculado a cada Ordem de Serviço, permitindo comunicação transparente entre todos os perfis.
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 * **Linguagem:** Python 3
 * **Interface Gráfica (GUI):** CustomTkinter (Design moderno e responsivo)
@@ -44,7 +44,7 @@
 
 ---
 
-## 📂 Estrutura do Projeto (MVC)
+## Estrutura do Projeto (MVC)
 
 ```text
 workstockapp/
